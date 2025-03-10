@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import 'common_widgets.dart'; // Contains AppTitle & showCustomDialog
+import 'common_widgets.dart';
 import 'homepage.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -26,16 +26,16 @@ class _LoginScreenState extends State<LoginScreen>
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 500),
     );
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeIn),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.2),
       end: Offset.zero,
     ).animate(
-      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.forward();
   }
@@ -60,9 +60,6 @@ class _LoginScreenState extends State<LoginScreen>
       return;
     }
 
-    // IMPORTANT: Update the URL below to match your authorized domain.
-    // For example, if your app is deployed on Firebase Hosting, use:
-    // 'https://stayspot.web.app/finishSignUp?email=$email'
     final actionCodeSettings = ActionCodeSettings(
       url: 'https://stayspot.web.app/finishSignUp?email=$email',
       handleCodeInApp: true,
@@ -73,7 +70,6 @@ class _LoginScreenState extends State<LoginScreen>
     );
 
     try {
-      print("Attempting to send sign-in link to $email");
       await FirebaseAuth.instance.sendSignInLinkToEmail(
         email: email,
         actionCodeSettings: actionCodeSettings,
@@ -85,7 +81,6 @@ class _LoginScreenState extends State<LoginScreen>
             "A sign-in link has been sent to $email. Please check your inbox (and spam folder) and then paste the complete link below to finish signing in.",
       );
     } catch (e) {
-      print("Error sending email: $e");
       showCustomDialog(
         context: context,
         title: "Error Sending Email",
@@ -109,7 +104,6 @@ class _LoginScreenState extends State<LoginScreen>
     }
 
     try {
-      print("Attempting to sign in with email link for $email");
       await FirebaseAuth.instance.signInWithEmailLink(
         email: email,
         emailLink: emailLink,
@@ -117,10 +111,8 @@ class _LoginScreenState extends State<LoginScreen>
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => const Homepage()),
-
       );
     } catch (e) {
-      print("Error verifying email link: $e");
       showCustomDialog(
         context: context,
         title: "Verification Failed",
@@ -132,23 +124,26 @@ class _LoginScreenState extends State<LoginScreen>
   /// Combined flow: send email link, then prompt user to paste the link.
   Future<void> handleEmailVerificationFlow() async {
     await sendSignInEmail();
-    // Prompt the user to paste the sign-in link.
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) {
         return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           title: const Text("Enter Verification Link"),
           content: TextField(
             controller: _linkController,
             decoration: const InputDecoration(
               hintText: "Paste the complete sign-in link here",
+              border: OutlineInputBorder(),
             ),
           ),
           actions: [
             TextButton(
               onPressed: () async {
-                Navigator.pop(context); // Close the dialog
+                Navigator.pop(context);
                 await verifyEmailLinkAndSignIn();
               },
               child: const Text("Submit"),
@@ -159,7 +154,7 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  // Google Sign-In remains unchanged.
+  /// Google Sign-In remains unchanged.
   Future<void> handleGoogleLogin() async {
     try {
       if (kIsWeb) {
@@ -168,7 +163,7 @@ class _LoginScreenState extends State<LoginScreen>
       } else {
         final GoogleSignIn googleSignIn = GoogleSignIn();
         final googleUser = await googleSignIn.signIn();
-        if (googleUser == null) return; // User cancelled
+        if (googleUser == null) return;
         final googleAuth = await googleUser.authentication;
         final credential = GoogleAuthProvider.credential(
           accessToken: googleAuth.accessToken,
@@ -178,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen>
       }
       Navigator.pushReplacement(
         context,
-          MaterialPageRoute(builder: (context) => const Homepage()),
+        MaterialPageRoute(builder: (context) => const Homepage()),
       );
     } catch (e) {
       showCustomDialog(
@@ -195,30 +190,32 @@ class _LoginScreenState extends State<LoginScreen>
       backgroundColor: const Color(0xfff4f4f4),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
           child: SlideTransition(
             position: _slideAnimation,
             child: FadeTransition(
               opacity: _fadeAnimation,
               child: Card(
-                elevation: 10,
+                elevation: 8,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Padding(
-                  padding: const EdgeInsets.all(25),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 30, vertical: 25),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const AppTitle(),
-                      const SizedBox(height: 20),
-                      // ------------------ Email Link Authentication ------------------
+                      const SizedBox(height: 25),
                       TextField(
                         controller: _emailController,
                         keyboardType: TextInputType.emailAddress,
                         decoration: const InputDecoration(
                           labelText: "Email Address",
                           border: OutlineInputBorder(),
+                          contentPadding:
+                              EdgeInsets.symmetric(vertical: 15, horizontal: 12),
                         ),
                       ),
                       const SizedBox(height: 20),
@@ -230,60 +227,64 @@ class _LoginScreenState extends State<LoginScreen>
                             backgroundColor: Colors.orange,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                           child: const Text(
                             "Login",
-                            style: TextStyle(fontWeight: FontWeight.w500),
+                            style: TextStyle(
+                                fontWeight: FontWeight.w600, fontSize: 16),
                           ),
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      // ------------------------ OR ------------------------
+                      const SizedBox(height: 25),
                       Row(
                         children: const [
                           Expanded(child: Divider(thickness: 1)),
                           Padding(
-                            padding: EdgeInsets.symmetric(horizontal: 8.0),
+                            padding: EdgeInsets.symmetric(horizontal: 10.0),
                             child: Text("OR"),
                           ),
                           Expanded(child: Divider(thickness: 1)),
                         ],
                       ),
-                      const SizedBox(height: 20),
-                      // ------------------ Continue with Google ------------------
+                      const SizedBox(height: 25),
                       SizedBox(
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           icon: Image.asset(
                             'assets/images/google-logo.png',
-                            width: 20,
-                            height: 20,
+                            width: 24,
+                            height: 24,
                           ),
                           label: const Text(
                             "Continue with Google",
-                            style: TextStyle(color: Colors.black),
+                            style: TextStyle(
+                                color: Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600),
                           ),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             side: BorderSide(color: Colors.grey.shade400),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(10),
                             ),
                           ),
                           onPressed: handleGoogleLogin,
                         ),
                       ),
-                      const SizedBox(height: 20),
-                      // -------------- Register Link (Optional) --------------
+                      const SizedBox(height: 25),
                       GestureDetector(
-                        onTap: () => Navigator.pushNamed(context, '/register'),
+                        onTap: () {
+                          // Navigate to the register screen if needed
+                          Navigator.pushReplacementNamed(context, '/register');
+                        },
                         child: const Text(
                           "Don't have an account? Register",
                           style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
                             color: Color(0xff007BFF),
                             fontFamily: 'Poppins',
                           ),

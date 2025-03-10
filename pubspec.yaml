@@ -28,6 +28,7 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/images/google-logo.png
+    - assets/images/empty_wishlist.png
 
   fonts:
     - family: Poppins

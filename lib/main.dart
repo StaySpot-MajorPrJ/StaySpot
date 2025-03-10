@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'firebase_config.dart'; // Ensure this file properly initializes Firebase
+import 'firebase_config.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart'; // Ensure this file properly initializes Firebase
 import 'login_screen.dart';   // Import your LoginScreen
 import 'register_screen.dart'; // Import your RegisterScreen
 
