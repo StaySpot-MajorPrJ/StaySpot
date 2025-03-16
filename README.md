@@ -1,3 +1,3 @@
-# stayspot
+# StaySpot
 
-A new Flutter project.
+this App is still under development...
