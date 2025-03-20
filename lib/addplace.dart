@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:upi_india/upi_india.dart'; // Add this import for UPI payments
 
 class AddPlace extends StatefulWidget {
   const AddPlace({super.key});
@@ -18,6 +19,7 @@ class _AddPlaceState extends State<AddPlace> with TickerProviderStateMixin {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _rentController = TextEditingController();
   final TextEditingController _tokenController = TextEditingController();
+  final TextEditingController _upiIdController = TextEditingController(); // New controller for UPI ID
 
   File? _tradeCertificate;
   List<File> _propertyImages = [];
@@ -56,6 +58,7 @@ class _AddPlaceState extends State<AddPlace> with TickerProviderStateMixin {
     _phoneController.dispose();
     _rentController.dispose();
     _tokenController.dispose();
+    _upiIdController.dispose();
     super.dispose();
   }
 
@@ -69,12 +72,77 @@ class _AddPlaceState extends State<AddPlace> with TickerProviderStateMixin {
   }
 
   Future<void> _pickPropertyImages() async {
-    final List<XFile>? images = await _picker.pickMultiImage();
-    if (images != null && images.isNotEmpty) {
+    final List<XFile> images = await _picker.pickMultiImage();
+    if (images.isNotEmpty) {
       setState(() {
         _propertyImages = images.map((e) => File(e.path)).toList();
       });
     }
+  }
+
+  // Function to initiate UPI payment using upi_india package.
+  Future<void> _initiateUpiPayment() async {
+    if (_upiIdController.text.isEmpty || _tokenController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Please enter UPI ID and Token amount")),
+      );
+      return;
+    }
+
+    // Parse the token amount
+    double amount;
+    try {
+      amount = double.parse(_tokenController.text);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Invalid token amount")),
+      );
+      return;
+    }
+
+    UpiIndia upiIndia = UpiIndia(
+      app: UpiApp.googlePay, // You can change this to your desired UPI app.
+      receiverUpiId: _upiIdController.text,
+      receiverName: "Owner Name", // Customize as needed.
+      transactionRefId: "TxnRef${DateTime.now().millisecondsSinceEpoch}",
+      transactionNote: "Token Payment",
+      amount: amount,
+    );
+
+    try {
+      UpiResponse response = await upiIndia.startTransaction();
+      _showUpiResult(response);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error initiating UPI payment: $e")),
+      );
+    }
+  }
+
+  // Display UPI transaction details.
+  void _showUpiResult(UpiResponse response) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Payment Details"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Status: ${response.status}"),
+            Text("Transaction ID: ${response.transactionId}"),
+            Text("Approval Reference: ${response.approvalRefNo}"),
+            Text("Response Date: ${DateTime.now()}"),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   void _submit() {
@@ -86,6 +154,7 @@ class _AddPlaceState extends State<AddPlace> with TickerProviderStateMixin {
       debugPrint("Phone: ${_phoneController.text}");
       debugPrint("Rent: ${_rentController.text}");
       debugPrint("Token: ${_tokenController.text}");
+      debugPrint("UPI ID: ${_upiIdController.text}");
       if (_selectedPropertyType == "PG/Hostel") {
         debugPrint("Trade Certificate: ${_tradeCertificate != null ? 'Uploaded' : 'Not Uploaded'}");
       }
@@ -113,7 +182,7 @@ class _AddPlaceState extends State<AddPlace> with TickerProviderStateMixin {
     final darkBlue = Colors.blue.shade900;
     final offWhite = Colors.grey.shade200;
     const orangeColor = Colors.orange;
-    const poppinsTextStyle = TextStyle(
+    const PoppinsTextStyle = TextStyle(
       fontFamily: 'Poppins',
       fontWeight: FontWeight.bold,
       color: Colors.white,
@@ -232,7 +301,7 @@ class _AddPlaceState extends State<AddPlace> with TickerProviderStateMixin {
                         label: const Text("Upload Trade Certificate"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: offWhite,
-                          textStyle: poppinsTextStyle,
+                          textStyle: PoppinsTextStyle,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -255,7 +324,7 @@ class _AddPlaceState extends State<AddPlace> with TickerProviderStateMixin {
                   label: const Text("Upload Property Images"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: offWhite,
-                    textStyle: poppinsTextStyle,
+                    textStyle: PoppinsTextStyle,
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -358,6 +427,7 @@ class _AddPlaceState extends State<AddPlace> with TickerProviderStateMixin {
                   ],
                 ),
                 const SizedBox(height: 16),
+                // Token Amount Field.
                 TextFormField(
                   controller: _tokenController,
                   decoration: const InputDecoration(
@@ -367,14 +437,41 @@ class _AddPlaceState extends State<AddPlace> with TickerProviderStateMixin {
                   ),
                   keyboardType: TextInputType.number,
                 ),
+                const SizedBox(height: 16),
+                // New UPI ID Field.
+                TextFormField(
+                  controller: _upiIdController,
+                  decoration: const InputDecoration(
+                    labelText: "Enter Your UPI ID",
+                    prefixIcon: Icon(Icons.account_balance_wallet),
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.emailAddress,
+                  validator: (value) =>
+                      value == null || value.isEmpty ? "Please enter your UPI ID" : null,
+                ),
                 const SizedBox(height: 24),
+                // UPI Payment Button.
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _initiateUpiPayment,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: orangeColor,
+                      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                      textStyle: PoppinsTextStyle,
+                    ),
+                    child: const Text("Pay Token"),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // Final Submission Button.
                 Center(
                   child: ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: orangeColor,
                       padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-                      textStyle: poppinsTextStyle,
+                      textStyle: PoppinsTextStyle,
                     ),
                     child: _isLoading
                         ? const CircularProgressIndicator(

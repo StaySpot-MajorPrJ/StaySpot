@@ -74,11 +74,12 @@ class _LoginScreenState extends State<LoginScreen>
         email: email,
         actionCodeSettings: actionCodeSettings,
       );
+      // Show dialog informing the user that a link has been sent.
       showCustomDialog(
         context: context,
         title: "Verification Email Sent",
         message:
-            "A sign-in link has been sent to $email. Please check your inbox (and spam folder) and then paste the complete link below to finish signing in.",
+            "A sign-in link has been sent to $email. Please check your inbox (and spam folder) for instructions.",
       );
     } catch (e) {
       showCustomDialog(
@@ -121,9 +122,36 @@ class _LoginScreenState extends State<LoginScreen>
     }
   }
 
-  /// Combined flow: send email link, then prompt user to paste the link.
+  /// Combined flow: send email link, show instruction, then prompt user to paste the link.
   Future<void> handleEmailVerificationFlow() async {
     await sendSignInEmail();
+
+    // Show instructional dialog after sending the email.
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          title: const Text("Email Sent"),
+          content: const Text(
+            "A sign-in link has been sent to your email address. Please check your inbox (and spam folder) for instructions. Tap OK once you've done so.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text("OK"),
+            ),
+          ],
+        );
+      },
+    );
+
+    // Then, show the overlay for pasting the verification link.
     showDialog(
       context: context,
       barrierDismissible: false,

@@ -39,7 +39,7 @@ class _ManagePlaceState extends State<ManagePlace> with TickerProviderStateMixin
   bool _roomsAvailable = true;
 
   final ImagePicker _picker = ImagePicker();
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   late final AnimationController _animationController;
   late final Animation<double> _fadeAnimation;
@@ -59,8 +59,8 @@ class _ManagePlaceState extends State<ManagePlace> with TickerProviderStateMixin
   }
 
   Future<void> _pickPropertyImages() async {
-    final List<XFile>? images = await _picker.pickMultiImage();
-    if (images != null && images.isNotEmpty) {
+    final List<XFile> images = await _picker.pickMultiImage();
+    if (images.isNotEmpty) {
       setState(() {
         _propertyImages = images.map((e) => File(e.path)).toList();
       });

@@ -16,6 +16,7 @@ class Homepage extends StatefulWidget {
 
 class _HomepageState extends State<Homepage> with TickerProviderStateMixin {
   FilterOptions? _selectedFilter;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   late final AnimationController _bodyAnimationController;
   late final Animation<double> _bodyFadeAnimation;
@@ -46,7 +47,6 @@ class _HomepageState extends State<Homepage> with TickerProviderStateMixin {
   }
 
   void _showInstructionsOverlay() {
-    // Use showGeneralDialog for a smooth fade-and-scale transition.
     showGeneralDialog(
       barrierDismissible: false,
       barrierLabel: 'Instructions',
@@ -95,7 +95,7 @@ class _HomepageState extends State<Homepage> with TickerProviderStateMixin {
 
   void _showRoleSelectionDialog() {
     showGeneralDialog(
-      barrierDismissible: false, // User must choose a role.
+      barrierDismissible: false,
       barrierLabel: 'Role Selection',
       context: context,
       transitionDuration: const Duration(milliseconds: 500),
@@ -297,25 +297,115 @@ class _HomepageState extends State<Homepage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    // Fetch the user’s displayName to show initial if no photoURL.
+    // Fetch user details directly from Firebase.
     final user = FirebaseAuth.instance.currentUser;
     final String? photoUrl = user?.photoURL;
     final String? displayName = user?.displayName;
+    final String? email = user?.email;
 
     return Scaffold(
+      key: _scaffoldKey,
+      // Sidebar with white background.
+      endDrawer: Drawer(
+        backgroundColor: Colors.white,
+        child: ListView(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+          children: [
+            // Sidebar header with user details.
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: Colors.blue,
+                  backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
+                  child: photoUrl == null
+                      ? (displayName != null && displayName.isNotEmpty
+                          ? Text(
+                              displayName[0].toUpperCase(),
+                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                            )
+                          : const Icon(Icons.person, size: 28, color: Colors.white))
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName ?? 'User Name',
+                        style: const TextStyle(color: Colors.black87, fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        email ?? '',
+                        style: const TextStyle(color: Colors.black54, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Animated sidebar items with lighter palettes.
+            AnimatedMenuItem(
+              icon: Icons.person,
+              title: 'User',
+              iconColor: Colors.blue[700]!,
+              backgroundColor: Colors.blue[50]!,
+              onTap: () {
+                Navigator.pop(context);
+                _onMenuItemSelected('user');
+              },
+            ),
+            AnimatedMenuItem(
+              icon: Icons.favorite,
+              title: 'Wishlist',
+              // Updated to use a light green palette.
+              iconColor: Colors.green[700]!,
+              backgroundColor: Colors.green[50]!,
+              onTap: () {
+                Navigator.pop(context);
+                _onMenuItemSelected('wishlist');
+              },
+            ),
+            AnimatedMenuItem(
+              icon: Icons.logout,
+              title: 'Logout',
+              iconColor: Colors.red[700]!,
+              backgroundColor: Colors.red[50]!,
+              onTap: () {
+                Navigator.pop(context);
+                _onMenuItemSelected('logout');
+              },
+            ),
+          ],
+        ),
+      ),
       appBar: AppBar(
+        automaticallyImplyLeading: false, // Remove the back arrow.
         toolbarHeight: 80,
         backgroundColor: Colors.blue,
         title: Row(
           children: [
-            Image.asset(
-              'assets/images/logo.png',
-              height: 40,
-              width: 40,
-              fit: BoxFit.contain,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.home, color: Colors.white, size: 40);
-              },
+            // Logo in a circular container.
+            Container(
+              width: 50,
+              height: 50,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Image.asset(
+                  'assets/images/logo.png',
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) {
+                    return const Icon(Icons.home, color: Colors.blue, size: 30);
+                  },
+                ),
+              ),
             ),
             const SizedBox(width: 8),
             const Text(
@@ -329,10 +419,16 @@ class _HomepageState extends State<Homepage> with TickerProviderStateMixin {
           ],
         ),
         actions: [
-          // 1) Show the user's DP or initial in a CircleAvatar:
+          // Icon to open the sidebar.
+          IconButton(
+            icon: const Icon(Icons.menu, color: Colors.white),
+            onPressed: () {
+              _scaffoldKey.currentState?.openEndDrawer();
+            },
+          ),
+          // User profile icon.
           GestureDetector(
             onTap: () {
-              // Optionally navigate to user profile directly if desired:
               Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const UserProfilePage()),
@@ -342,7 +438,7 @@ class _HomepageState extends State<Homepage> with TickerProviderStateMixin {
               padding: const EdgeInsets.symmetric(horizontal: 8.0),
               child: CircleAvatar(
                 radius: 20,
-                backgroundColor: photoUrl == null ? Colors.black87 : Colors.transparent,
+                backgroundColor: Colors.white,
                 backgroundImage: photoUrl != null ? NetworkImage(photoUrl) : null,
                 child: photoUrl == null
                     ? (displayName != null && displayName.isNotEmpty
@@ -350,114 +446,14 @@ class _HomepageState extends State<Homepage> with TickerProviderStateMixin {
                             displayName[0].toUpperCase(),
                             style: const TextStyle(
                               fontSize: 20,
-                              color: Colors.white,
+                              color: Colors.blue,
                               fontWeight: FontWeight.bold,
                             ),
                           )
-                        : const Icon(Icons.person, size: 20, color: Colors.white))
+                        : const Icon(Icons.person, size: 20, color: Colors.blue))
                     : null,
               ),
             ),
-          ),
-
-          // 2) A dedicated Flutter icon (3-dot menu) to open the popup:
-          PopupMenuButton<String>(
-            tooltip: 'Options',
-            icon: const Icon(Icons.more_vert, color: Colors.white, size: 28),
-            onSelected: _onMenuItemSelected,
-            color: Colors.white.withOpacity(0.95),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'user',
-                height: 50,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    border: Border.all(
-                      color: Colors.blueAccent.withOpacity(0.8),
-                      width: 2,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.person, color: Colors.blueAccent, size: 24),
-                      const SizedBox(width: 6),
-                      Text(
-                        'User',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.blueAccent,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'wishlist',
-                height: 50,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    border: Border.all(
-                      color: Colors.deepPurpleAccent.withOpacity(0.8),
-                      width: 2,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.favorite, color: Colors.deepPurpleAccent, size: 24),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Wishlist',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.deepPurpleAccent,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              PopupMenuItem(
-                value: 'logout',
-                height: 50,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.transparent,
-                    border: Border.all(
-                      color: Colors.redAccent.withOpacity(0.8),
-                      width: 2,
-                    ),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.logout, color: Colors.redAccent, size: 24),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Logout',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.redAccent,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
           ),
         ],
       ),
@@ -500,7 +496,7 @@ class _HomepageState extends State<Homepage> with TickerProviderStateMixin {
                 ),
               ),
               const SizedBox(height: 20),
-              // Main content placeholder with smooth transition on filter changes.
+              // Main content placeholder.
               Expanded(
                 child: Center(
                   child: AnimatedSwitcher(
@@ -518,6 +514,60 @@ class _HomepageState extends State<Homepage> with TickerProviderStateMixin {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A custom widget that adds a hover animation to menu items.
+class AnimatedMenuItem extends StatefulWidget {
+  final IconData icon;
+  final String title;
+  final Color iconColor;
+  final Color backgroundColor;
+  final VoidCallback onTap;
+
+  const AnimatedMenuItem({
+    Key? key,
+    required this.icon,
+    required this.title,
+    required this.iconColor,
+    required this.backgroundColor,
+    required this.onTap,
+  }) : super(key: key);
+
+  @override
+  _AnimatedMenuItemState createState() => _AnimatedMenuItemState();
+}
+
+class _AnimatedMenuItemState extends State<AnimatedMenuItem> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (event) => setState(() {
+        _isHovered = true;
+      }),
+      onExit: (event) => setState(() {
+        _isHovered = false;
+      }),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        transform: Matrix4.identity()..scale(_isHovered ? 1.05 : 1.0),
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: widget.backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: ListTile(
+          leading: Icon(widget.icon, color: widget.iconColor),
+          title: Text(
+            widget.title,
+            style: TextStyle(color: widget.iconColor),
+          ),
+          onTap: widget.onTap,
         ),
       ),
     );
